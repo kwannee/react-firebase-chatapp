@@ -9,7 +9,7 @@ import {
 
 import ChatPage from './components/ChatPage/ChatPage'
 import LoginPage from './components/LoginPage/LoginPage'
-
+import RegisterPage from './components/RegisterPage/RegisterPage'
 //라우팅
 function App() {
   return (
@@ -17,7 +17,7 @@ function App() {
         <Switch>
           <Route exact path="/"    component={ChatPage}/>
           <Route exact path="/login"    component={LoginPage}/>
-          <Route exact path="/"    component={ChatPage}/>
+          <Route exact path="/register"    component={RegisterPage}/>
         </Switch>
     </Router>
   );
