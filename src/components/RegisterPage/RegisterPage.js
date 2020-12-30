@@ -2,20 +2,35 @@ import React,{useRef,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {useForm} from 'react-hook-form'
 import firebase from '../../firebase'
+import md5 from 'md5'
 
 function RegisterPage() {
 
     const {register,watch,errors,handleSubmit} =useForm();
     const [errorFromSubmit, seterrorFromSubmit] = useState("")
+    //로딩 중 클릭 방지
+    const [loading, setloading] = useState(false)
     const password =useRef()
     password.current = watch("password")
 
     const onSubmit = async (data) =>{
 
         try{
+            setloading(true)
             let createdUser = await firebase
             .auth()
             .createUserWithEmailAndPassword(data.email,data.password)
+            setloading(false)
+
+            await createdUser.user.updateProfile({
+                displayName:data.name,
+                photoURL: `http:gravatar.com/avatar/${md5(createdUser.user.email)}?d=identicon`
+            })
+            //파베 db에 저장하기
+            await firebase.database().ref("users").child(createdUser.user.uid).set({
+                name:createdUser.user.displayName,
+                image:createdUser.user.photoURL
+            })
         }catch(error){
             seterrorFromSubmit(error.message)
             setTimeout(()=>{
@@ -63,7 +78,7 @@ function RegisterPage() {
                     {errorFromSubmit &&
                     <p>{errorFromSubmit}</p>}
                 
-                <input type="submit" />
+                <input type="submit" disabled={loading}/>
                 <Link style={{color:'gray',textDecoration:'none'}} to="login">이미 아이디가 있다면...</Link>
             </form>
         </div>
