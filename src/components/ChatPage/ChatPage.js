@@ -1,9 +1,15 @@
 import React from 'react'
-
+import SidePanel from './SidePanel/SidePanel'
+import MainPanel from './MainPanel/MainPanel'
 function ChatPage() {
     return (
-        <div>
-            CHATPAGE
+        <div style={{display:'flex'}}>
+            <div style={{width:'300px'}}>
+                <SidePanel/>
+            </div>
+            <div style={{width:'300px'}}>
+                <MainPanel/>
+            </div>
         </div>
     )
 }
