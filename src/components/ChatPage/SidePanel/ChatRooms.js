@@ -3,14 +3,96 @@ import {FaRegSmileWink} from 'react-icons/fa'
 import {FaPlus} from 'react-icons/fa'
 import Modal from 'react-bootstrap/Modal'
 import Button from 'react-bootstrap/Button'
+import Form from 'react-bootstrap/Form'
+import {connect} from 'react-redux'
+import firebase from '../../../firebase'
+import {setCurrentChatRoom} from '../../../redux/actions/chatRoom_action'
 export class ChatRooms extends Component {
 
     state = {
-        show:false
+        show:false,
+        name:"",
+        description:"",
+        chatRoomsRef: firebase.database().ref("chatRooms"),
+        chatRooms:[],
+        firstLoad:true,
+        activeChatRoomId:""
+    }
+
+    componentDidMount(){
+        this.AddChatRoomsListeners();
+    }
+    componentWillUnmount(){
+        this.state.chatRooms.off()
+    }
+    setFirstChatRoom = () =>{
+        const firstChatRoom =this.state.chatRooms[0]
+        if(this.state.firstLoad && this.state.chatRooms.length > 0){ 
+            this.props.dispatch(setCurrentChatRoom(firstChatRoom))
+            this.setState({activeChatRoomId:firstChatRoom.id})
+        }
+        this.setState({firstLoad:false})
+    }
+    AddChatRoomsListeners = () =>{
+        let chatRoomsArray= []
+        this.state.chatRoomsRef.on("child_added",DataSnapshot =>{
+            chatRoomsArray.push(DataSnapshot.val())
+            //받아온거 state로 넣어서 렌더링
+            this.setState({chatRooms:chatRoomsArray},() => this.setFirstChatRoom())
+        })
     }
 
     handleClose = () => this.setState({show:false});
     handleShow = () => this.setState({show:true});
+    handleSubmit = (e) =>{
+        e.preventDefault();
+        const {name, description} = this.state;
+        if(this.isFormValid(name,description)){
+            this.addChatRoom();
+        }
+    }
+    addChatRoom = async () =>{
+        const key = this.state.chatRoomsRef.push().key;
+        const {name, description} = this.state;
+        const {user} = this.props;
+        const newChatRoom = {
+            id: key,
+            name: name,
+            description: description,
+            createdBy:{
+                name:user.displayName,
+                image:user.photoURL
+            }
+        }
+        try{
+            await this.state.chatRoomsRef.child(key).update(newChatRoom)
+            this.setState({
+                name:"",
+                description:'',
+                show:false
+            })
+        }catch(error){
+            alert(error)
+        }
+    }
+    isFormValid = (name,description)=>
+        name && description;
+    changeChatRoom = (room) =>{
+        this.props.dispatch(setCurrentChatRoom(room))
+        this.setState({activeChatRoomId:room.id})
+    }
+    renderChatRooms = (chatRooms) =>
+    chatRooms.length > 0 &&
+    chatRooms.map(room =>(
+        <li
+            key={room.id}
+            style={{backgroundColor: room.id === this.state.activeChatRoomId &&
+                '#ffffff45'}}
+            onClick={()=>this.changeChatRoom(room)}
+        >
+        #{room.name}
+        </li>
+    ))
 
     render() {
         return (
@@ -27,19 +109,39 @@ export class ChatRooms extends Component {
                         right:0,cursor:'pointer'
                     }}/>
                 </div>
+
+                    <ul style={{listStyleType:'none',padding:0}}>
+                        {this.renderChatRooms(this.state.chatRooms)}
+                    </ul>
+
                 {/*ADD CHAT ROOM MODAL */}
                     {/*클래스컴포넌트이다 보니까 앞에 this를 다 붙여준듯 */}
                 <Modal show={this.state.show} onHide={this.handleClose}>
                     <Modal.Header closeButton>
-                    <Modal.Title>Modal heading</Modal.Title>
+                    <Modal.Title>Create a chat room</Modal.Title>
                     </Modal.Header>
-                    <Modal.Body>Woohoo, you're reading this text in a modal!</Modal.Body>
+                    <Modal.Body>
+                        <Form onSubmit={this.handleSubmit}>
+                            <Form.Group controlId="formBasicEmail">
+                                <Form.Label>방 이름</Form.Label>
+                                <Form.Control 
+                                onChange={(e)=>this.setState({name: e.target.value})}
+                                type="text" placeholder="Enter a chat room name" />
+                            </Form.Group>
+                            <Form.Group controlId="formBasicPassword">
+                                <Form.Label>방 설명</Form.Label>
+                                <Form.Control 
+                                onChange={(e)=>this.setState({description: e.target.value})}
+                                type="text" placeholder="Enter a chat room description" />
+                            </Form.Group>
+                        </Form>
+                    </Modal.Body>
                     <Modal.Footer>
                     <Button variant="secondary" onClick={this.handleClose}>
-                        Close
+                        닫기
                     </Button>
-                    <Button variant="primary" onClick={this.handleClose}>
-                        Save Changes
+                    <Button variant="primary" onClick={this.handleSubmit}>
+                        방 생성
                     </Button>
                     </Modal.Footer>
                 </Modal>
@@ -48,4 +150,10 @@ export class ChatRooms extends Component {
     }
 }
 
-export default ChatRooms
+//connect 쓰는 이유는 클래스 컴포넌트라 리액트훅을 못써서 props를 못받아옴
+const mapStateToProps = state => {
+    return {
+        user:state.user.currentUser
+    }
+}
+export default connect(mapStateToProps)(ChatRooms) 
